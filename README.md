@@ -23,6 +23,7 @@
 - [Переменные окружения](#переменные-окружения)
 - [Использование](#использование)
 - [API](#api)
+- [Упаковка для Windows и Android](#упаковка-для-windows-и-android)
 - [План развития](#план-развития)
 - [Лицензия](#лицензия)
 
@@ -123,7 +124,11 @@ avito-clone/
 ├── README.md
 ├── docker-compose.yml      # Опционально
 ├── package.json
-└── LICENSE
+├── main.js
+├── electron-builder.json
+├── capacitor.config.ts
+├── LICENSE
+└── dist/
 ```
 
 ## Требования
@@ -134,6 +139,8 @@ avito-clone/
 - npm или yarn
 - PostgreSQL 14+
 - Git
+- Android Studio (для сборки Android APK)
+- Java JDK 17+ (для Android сборки)
 
 ## Установка и запуск
 
@@ -146,17 +153,7 @@ cd avito-clone
 
 ### 2. Установка зависимостей
 
-Для frontend:
-
 ```bash
-cd client
-npm install
-```
-
-Для backend:
-
-```bash
-cd ../server
 npm install
 ```
 
@@ -193,32 +190,15 @@ CLIENT_URL=http://localhost:5173
 npx prisma migrate dev
 ```
 
-Или для других ORM:
+### 6. Запуск веб-приложения
 
 ```bash
-npm run migrate
-```
-
-### 6. Запуск проекта
-
-Запуск backend:
-
-```bash
-cd server
 npm run dev
 ```
 
-Запуск frontend:
-
-```bash
-cd client
-npm run dev
-```
-
-После этого приложение будет доступно по адресам:
+После этого приложение будет доступно по адресу:
 
 - Frontend: http://localhost:5173
-- Backend: http://localhost:5000
 
 ## Переменные окружения
 
@@ -272,6 +252,50 @@ POST /api/favorites/:itemId
 DELETE /api/favorites/:itemId
 ```
 
+## Упаковка для Windows и Android
+
+В проект добавлены базовые конфиги для сборки мобильной и десктопной версии приложения.
+
+### Windows installer
+
+Сборка Windows-версии через Electron:
+
+```bash
+npm install
+npm run build:web
+npm run build:win
+```
+
+После сборки в папке `dist-electron` появятся:
+- установщик `.exe`
+- portable-версия `.exe`
+
+### Android APK
+
+Сборка Android-версии через Capacitor:
+
+```bash
+npm install
+npm run build:web
+npx cap add android
+npx cap sync android
+cd android
+./gradlew assembleDebug
+```
+
+Готовый APK будет находиться в:
+
+```text
+android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+Для релизной сборки:
+
+```bash
+cd android
+./gradlew assembleRelease
+```
+
 ## План развития
 
 - Добавить личные сообщения между продавцом и покупателем
@@ -309,4 +333,4 @@ copies or substantial portions of the Software.
 
 ---
 
-Если хочешь, я могу также подготовить более краткую версию README для GitHub или сделать README под конкретный стек, который уже используется в проекте.
+Этот проект призван показать, что я умею строить продуктовую веб-платформу, поддерживать пользовательские сценарии, работать с данными и собирать приложение под разные платформы.
