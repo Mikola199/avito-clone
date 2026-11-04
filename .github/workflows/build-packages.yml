@@ -1,4 +1,4 @@
-name: Build Windows and Android packages
+name: Build and release desktop/mobile packages
 
 on:
   push:
@@ -7,8 +7,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
-  windows:
+  build-windows:
     name: Build Windows installer
     runs-on: windows-latest
     steps:
@@ -31,8 +34,14 @@ jobs:
             cat > index.html <<'EOF'
             <!doctype html>
             <html lang="en">
-              <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Avito Clone</title></head>
-              <body><div id="root"><h1>Avito Clone</h1></div></body>
+              <head>
+                <meta charset="UTF-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                <title>Avito Clone</title>
+              </head>
+              <body>
+                <div id="root"><h1>Avito Clone</h1></div>
+              </body>
             </html>
             EOF
           fi
@@ -46,10 +55,11 @@ jobs:
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
-          name: windows-build
+          name: windows-build-${{ github.run_number }}
           path: dist-electron/**
+          if-no-files-found: error
 
-  android:
+  build-android:
     name: Build Android APK
     runs-on: ubuntu-latest
     steps:
@@ -78,8 +88,14 @@ jobs:
             cat > index.html <<'EOF'
             <!doctype html>
             <html lang="en">
-              <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Avito Clone</title></head>
-              <body><div id="root"><h1>Avito Clone</h1></div></body>
+              <head>
+                <meta charset="UTF-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                <title>Avito Clone</title>
+              </head>
+              <body>
+                <div id="root"><h1>Avito Clone</h1></div>
+              </body>
             </html>
             EOF
           fi
@@ -100,5 +116,36 @@ jobs:
       - name: Upload Android artifact
         uses: actions/upload-artifact@v4
         with:
-          name: android-debug-apk
+          name: android-build-${{ github.run_number }}
           path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish GitHub Release
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [build-windows, build-android]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-build-${{ github.run_number }}
+          path: release-assets/windows
+
+      - name: Download Android artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: android-build-${{ github.run_number }}
+          path: release-assets/android
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: Release v${{ github.run_number }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          files: |
+            release-assets/windows/**/*
+            release-assets/android/**/*
