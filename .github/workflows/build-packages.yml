@@ -1,0 +1,104 @@
+name: Build Windows and Android packages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  windows:
+    name: Build Windows installer
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --no-fund --no-audit
+
+      - name: Prepare Vite entry point if needed
+        shell: bash
+        run: |
+          if [ ! -f "index.html" ]; then
+            cat > index.html <<'EOF'
+            <!doctype html>
+            <html lang="en">
+              <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Avito Clone</title></head>
+              <body><div id="root"><h1>Avito Clone</h1></div></body>
+            </html>
+            EOF
+          fi
+
+      - name: Build web bundle
+        run: npm run build:web
+
+      - name: Package Windows app
+        run: npm run build:win
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: dist-electron/**
+
+  android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --no-fund --no-audit
+
+      - name: Prepare Vite entry point if needed
+        shell: bash
+        run: |
+          if [ ! -f "index.html" ]; then
+            cat > index.html <<'EOF'
+            <!doctype html>
+            <html lang="en">
+              <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Avito Clone</title></head>
+              <body><div id="root"><h1>Avito Clone</h1></div></body>
+            </html>
+            EOF
+          fi
+
+      - name: Build web bundle
+        run: npm run build:web
+
+      - name: Sync Capacitor Android project
+        run: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
+          npx cap sync android
+
+      - name: Build Android debug APK
+        run: cd android && ./gradlew assembleDebug
+
+      - name: Upload Android artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
