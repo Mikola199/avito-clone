@@ -1,0 +1,30 @@
+{
+  "appId": "com.mikola199.avitoclone",
+  "productName": "Avito Clone",
+  "directories": {
+    "output": "dist-electron"
+  },
+  "files": [
+    "main.js",
+    "package.json",
+    "dist/**/*",
+    "!**/*.map",
+    "!**/node_modules/**"
+  ],
+  "win": {
+    "target": [
+      "nsis",
+      "portable"
+    ],
+    "artifactName": "avito-clone-${version}-win.${ext}"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true
+  },
+  "portable": {
+    "artifactName": "avito-clone-${version}-portable.exe"
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "name": "avito-clone",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Marketplace MVP inspired by Avito with Windows and Android packaging support.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "start:desktop": "electron .",
+    "build:web": "vite build",
+    "build:win": "electron-builder --win",
+    "android:init": "npx cap init",
+    "android:add": "npx cap add android",
+    "android:sync": "npx cap sync android",
+    "android:debug": "cd android && ./gradlew assembleDebug",
+    "android:release": "cd android && ./gradlew assembleRelease"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/core": "^6.1.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2",
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.0",
+    "vite": "^5.4.10"
+  },
+  "build": {
+    "appId": "com.mikola199.avitoclone",
+    "productName": "Avito Clone",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    }
+  }
+}
