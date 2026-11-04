@@ -3,6 +3,7 @@ name: Build and release desktop/mobile packages
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -176,7 +177,7 @@ jobs:
 
   publish-release:
     name: Publish GitHub Release
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: startsWith(github.ref, 'refs/tags/v')
     needs: [build-windows, build-android]
     runs-on: ubuntu-latest
     steps:
@@ -192,14 +193,22 @@ jobs:
           name: android-build-${{ github.run_number }}
           path: release-assets/android
 
+      - name: Rename release assets
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          mkdir -p release-assets/final
+          find release-assets/windows -type f -exec cp {} "release-assets/final/avito-clone-${version}-windows.exe" \;
+          find release-assets/android -type f -name "*.apk" -exec cp {} "release-assets/final/avito-clone-${version}-android.apk" \;
+          ls -R release-assets/final
+
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ github.run_number }}
-          name: Release v${{ github.run_number }}
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
           generate_release_notes: true
           draft: false
           prerelease: false
           files: |
-            release-assets/windows/**/*
-            release-assets/android/**/*
+            release-assets/final/*
