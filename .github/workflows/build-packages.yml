@@ -46,11 +46,33 @@ jobs:
             EOF
           fi
 
+      - name: Prepare Windows signing certificate
+        if: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 != '' && secrets.WINDOWS_CERTIFICATE_PASSWORD != '' }}
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $certPath = Join-Path $env:RUNNER_TEMP "avito-clone-signing.pfx"
+          [System.IO.File]::WriteAllBytes($certPath, [System.Convert]::FromBase64String($env:WINDOWS_CERTIFICATE_BASE64))
+          "CSC_LINK=$certPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CSC_KEY_PASSWORD=$env:WINDOWS_CERTIFICATE_PASSWORD" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CSC_IDENTITY_AUTO_DISCOVERY=false" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Build web bundle
         run: npm run build:web
 
       - name: Package Windows app
-        run: npm run build:win
+        shell: bash
+        env:
+          CSC_LINK: ${{ env.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          if [ -n "$CSC_LINK" ] && [ -n "$CSC_KEY_PASSWORD" ]; then
+            npm run build:win
+          else
+            npx electron-builder --win --publish never --config.win.sign=false
+          fi
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
@@ -100,6 +122,21 @@ jobs:
             EOF
           fi
 
+      - name: Prepare Android signing keystore
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/avito-clone-release.keystore"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/avito-clone-release.keystore" >> "$GITHUB_ENV"
+          echo "ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD" >> "$GITHUB_ENV"
+
       - name: Build web bundle
         run: npm run build:web
 
@@ -110,14 +147,31 @@ jobs:
           fi
           npx cap sync android
 
-      - name: Build Android debug APK
-        run: cd android && ./gradlew assembleDebug
+      - name: Build Android package
+        shell: bash
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ env.ANDROID_KEYSTORE_PATH }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ env.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ env.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ env.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_PATH" ] && [ -n "$ANDROID_KEYSTORE_PASSWORD" ] && [ -n "$ANDROID_KEY_ALIAS" ] && [ -n "$ANDROID_KEY_PASSWORD" ]; then
+            cd android && ./gradlew assembleRelease \
+              -Pandroid.injected.signing.store.file="$ANDROID_KEYSTORE_PATH" \
+              -Pandroid.injected.signing.store.password="$ANDROID_KEYSTORE_PASSWORD" \
+              -Pandroid.injected.signing.key.alias="$ANDROID_KEY_ALIAS" \
+              -Pandroid.injected.signing.key.password="$ANDROID_KEY_PASSWORD"
+          else
+            cd android && ./gradlew assembleDebug
+          fi
 
       - name: Upload Android artifact
         uses: actions/upload-artifact@v4
         with:
           name: android-build-${{ github.run_number }}
-          path: android/app/build/outputs/apk/debug/*.apk
+          path: |
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
 
   publish-release:
