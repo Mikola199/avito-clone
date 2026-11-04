@@ -14,7 +14,10 @@
     "android:sync": "npx cap sync android",
     "android:debug": "cd android && ./gradlew assembleDebug",
     "android:release": "cd android && ./gradlew assembleRelease",
-    "tag:release": "node scripts/create-tag.js"
+    "tag:release": "node scripts/create-tag.js",
+    "release:patch": "node scripts/bump-version.js patch && npm run tag:release",
+    "release:minor": "node scripts/bump-version.js minor && npm run tag:release",
+    "release:major": "node scripts/bump-version.js major && npm run tag:release"
   },
   "dependencies": {
     "@capacitor/android": "^6.1.2",
